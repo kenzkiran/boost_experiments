@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <boost/process/child.hpp>
 #include <optional>
 
@@ -10,7 +11,7 @@ class Process {
   // On success will provide a Process else nullopt for failure
   static std::optional<Process> CreateProcessWithExeAndArgs(
       boost::asio::io_context& io,
-      const boost::filesystem::path& exe_path,
+      const std::filesystem::path& exe_path,
       std::vector<std::string> args = {});
   boost::process::child& NativeProcess() { return child_process_; }
   void Terminate();

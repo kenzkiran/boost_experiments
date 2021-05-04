@@ -34,7 +34,7 @@ void TestProcess() {
   // executor See
   std::thread exit_observer_thread(ExitObserver, std::ref(io));
   std::error_code ec;
-  boost::filesystem::path exe_path{L"C:\\Windows\\system32\\notepad.exe"};
+  std::filesystem::path exe_path{"C:\\Windows\\system32\\notepad.exe"};
 
   auto process = base::Process::CreateProcessWithExeAndArgs(io, exe_path);
 
@@ -44,7 +44,7 @@ void TestProcess() {
   std::cout << "Done Sleeping on main thread for 10 seconds\n";
 
   // Even if we don't call terminate, the child destructor will call it
-  if (process.value().NativeProcess().joinable())
+  if (process && process.value().NativeProcess().joinable())
     process.value().Terminate();
 
   // If we don't receive the terimate within 10 seconds, we reset work gaurd and

@@ -1,93 +1,74 @@
-// TestBoost.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
-
+// TestBoost.cpp : This file contains the 'main' function. Program execution
+// begins and ends there.
 
 #include <iostream>
 
-#include <Winsock2.h>
-#include <Windows.h>
-#include <boost/asio.hpp>
-#include <boost/filesystem.hpp>
-//#include <boost/process.hpp>
-#include <boost/process/child.hpp>
-#include <chrono>
+#include "pch.h"
+#include "test_list.h"
 
-#include "process.h"
+// Notes: Program options need a lib
+// Reference https://www.boost.org/doc/libs/1_76_0/doc/html/program_options/
+#include <boost/program_options.hpp>
 
-using io_context_work_gaurd = boost::asio::executor_work_guard<boost::asio::io_context::executor_type>;
+namespace po = boost::program_options;
 
-std::wstring GetThreadIdToWString() {
-  std::wstringstream ss;
-  ss << std::this_thread::get_id();
-  return ss.str();
-}
+int main(int argc, char** argv) {
 
-void ExitObserver(boost::asio::io_context& io) {
-  std::cout <<"Child thread : "<< std::this_thread::get_id() <<"\n";
-  io.run();
-  std::cout << "Child thread exited\n";
-}
-int main()
-{
-  std::cout << "Hello World!\n";
-  boost::asio::thread_pool pool;
-  boost::asio::io_context io; 
-  auto executor = io.get_executor();
-  boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work_guard = boost::asio::make_work_guard(executor);
+  std::cout << argc <<std::endl;
+  po::options_description desc("Allowed options");
+  desc.add_options()
+    ("help", "produce help message")
+    ("test", po::value<std::string>(), "test type")
+    ("client", po::value<std::string>(), "client type")
+    ("pipe_name", po::value<std::string>(), "name of pipe");
 
-  std::thread exit_observer_thread(ExitObserver, std::ref(io));
-  std::error_code ec;
-  boost::filesystem::path exe_path{L"C:\\Windows\\system32\\notepad.exe"};
 
-  boost::filesystem::path exe_path2{ L"C:\\Windows\\system32\\ntepad.exe" };
-  auto process = base::Process::CreateProcessWithExeAndArgs(io, exe_path);
-  process.value().NativeProcess().detach();
-  std::cout << "Ravi created process " << &process.value() <<"\n";
-  //auto process2 = base::Process::CreateProcessWithExeAndArgs(io, exe_path2);
+  // Variable Map is boosts extension of std::map 
+  // Variable Value is boost::any -> https://www.boost.org/doc/libs/1_76_0/doc/html/boost/program_options/variable_value.html
+  po::variables_map vm;
+  try {
+    po::store(po::parse_command_line(argc, argv, desc), vm);
+    po::notify(vm);
+    for (const auto& [key, value] : vm) {
+      std::cout << key << ":" << (value.empty() ? "null" : value.as<std::string>()) << std::endl;
+    }
+  } catch(...) {
+    std::cout << "Exception in parsing...";
+    return 0;
+  }
 
-  // boost::process::child child_process(exe_path.wstring().c_str(), ec);
-  // process->NativeProcess().detach();
+  if (vm.count("test")) {
+    auto test = vm["test"].as<std::string>();
+
+    if (test == "process") {
+      TestProcess();
+      return 0;
+    }
+    if (test == "async_pipe") {
+      TestAsyncPipe(vm);
+      return 0;
+    }
+
+    if (test == "win_named_pipe") {
+      TestNamedPipe(vm);
+      return 0;
+    }
   
-#if 0
-  auto executor = pool.get_executor();
-  auto work_guard = boost::asio::make_work_guard(executor);
-  boost::asio::post(pool, [&] {
-    std::cout << "Ravi inside task\n";
-    boost::asio::post(pool, [&] {
-      std::cout << "Ravi2 inside task\n";
-      work_guard.reset();
-      });
-    });
-  pool.wait();
-#endif
-
-  // boost::asio::signal_set signals(io, SIGTERM);
-  // signals.async_wait([&](auto, auto) { io_context.stop(); });
-
-
-  auto thread_id_w = GetThreadIdToWString();
-  // std::cout << thread_id_w.c_str() << std::endl;
-
-  std::cout << "Main thread Id: " << std::this_thread::get_id() << std::endl;
-  // std::cout << "Ravi waiting on io context run\n";
-  // io.run();
-  // std::cout << "Ravi exiting after io context run\n";
-  std::cout << "Ravi waiting on main thread for 10 seconds\n";
-  std::this_thread::sleep_for(std::chrono::seconds(5));
-  std::cout << "Ravi Done Sleeping on main thread for 10 seconds\n";
-  // process.value().Terminate();
-  work_guard.reset();
-  io.stop();
-  exit_observer_thread.join();
+    std::cout << "No test specified";
+    return 0;
+  }
+ 
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu
 // Debug program: F5 or Debug > Start Debugging menu
 
-// Tips for Getting Started: 
+// Tips for Getting Started:
 //   1. Use the Solution Explorer window to add/manage files
 //   2. Use the Team Explorer window to connect to source control
 //   3. Use the Output window to see build output and other messages
 //   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
+//   5. Go to Project > Add New Item to create new code files, or Project > Add
+//   Existing Item to add existing code files to the project
+//   6. In the future, to open this project again, go to File > Open > Project
+//   and select the .sln file

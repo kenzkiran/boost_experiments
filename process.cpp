@@ -1,24 +1,19 @@
 
-#define NOMINMAX
-#include <Winsock2.h>
-#include <Windows.h>
 
 #include "process.h"
 
 #include <boost/process.hpp>
-//#include <boost/winapi/handles.hpp>
-//#include <boost/winapi/handle_info.hpp>
+#include <boost/process/async.hpp>
 #include <boost/process/child.hpp>
 #include <boost/process/extend.hpp>
-#include <boost/process/async.hpp>
 #include <iostream>
 
 using namespace boost::process;
 
 namespace base {
 
-struct async_bar : extend::async_handler
-{
+// This is a way to do via async_handler extension
+struct async_bar : extend::async_handler {
   async_bar() {
     handler = [](int, const std::error_code&) -> void {
       std::cout << " Ravi on async_bar exit \n";
@@ -29,61 +24,59 @@ struct async_bar : extend::async_handler
     std::cout << "Ravi in on setup!!!!\n";
     on_exit_handler(ec);
   }
- 
+
   std::function<void(int, const std::error_code&)> handler;
-  template<typename Executor>
-  std::function<void(int, const std::error_code&)> on_exit_handler(Executor& exec)
-  {
+  template <typename Executor>
+  std::function<void(int, const std::error_code&)> on_exit_handler(
+      Executor& exec) {
     auto handler_ = this->handler;
-    return [handler_](int exit_code, const std::error_code& ec)
-    {
+    return [handler_](int exit_code, const std::error_code& ec) {
       handler_(static_cast<int>(exit_code), ec);
     };
-
   }
 };
 
 /* static */
 std::optional<Process> Process::CreateProcessWithExeAndArgs(
     boost::asio::io_context& io,
-    const boost::filesystem::path& exe_path,
-    std::vector<std::string> args) {
+  const std::filesystem::path& exe_path,
+    std::vector<std::string> in_args) {
   if (exe_path.empty()) {
     // DCHECK here
     return std::nullopt;
   }
-  //std::string command_line = exe_path.string();
-  //std::for_each(args.begin(), args.end(),
- //              [&command_line](const std::string& arg) {
- //                 command_line.append(std::string(" ") + arg);
-  //              });
+
+  // FIXME: Re=-enabled command line
+  auto command_line{ exe_path.string() };
+  std::for_each(in_args.begin(), in_args.end(),
+              [&command_line](const std::string& arg) {
+                 command_line.append(std::string(" ") + arg);
+               });
+
+  // References:
+  // https://www.boost.org/doc/libs/1_75_0/doc/html/boost_process/extend.html
+  //
+  // The following is a way to do using simple lambda
   std::error_code ec;
-  async_bar bar;
-
-#if 0
-  std::function<void(int exit, const std::error_code& ec_in)> on_exit = [](int exit, const std::error_code& ec_in) {
-    std::cout << "Ravi on exit\n";
-  };
-    auto on_success = [](int exit, const std::error_code& ec_in) {
-    std::cout << "Ravi on success\n";
-  };
-    auto on_error = [](int exit, const std::error_code& ec_in) {
-      std::cout << "Ravi on error\n";
-    };
-#endif
-
-// The following is a way to do usign simple lambda
-  boost::process::child child_process(exe_path, io, on_exit = [](int exit, const std::error_code& ec_in) {
-    std::cout << "Ravi on exit  thread id: " << std::this_thread::get_id() << "\n";
-    }, ec);
+  boost::process::child child_process(
+      command_line.c_str(), io,
+      boost::process::extend::on_success =
+          [](const auto& exec) {
+            std::cout << "Process success thread id: "
+                      << std::this_thread::get_id() << "\n";
+          },
+      on_exit =
+          [](int exit, const std::error_code& ec_in) {
+            std::cout << "Process exited thread id: "
+                      << std::this_thread::get_id() << "\n";
+          },
+      ec);
 
   // The following uses a class
- 
- //boost::process::child child_process(exe_path, io, async_bar(), ec);
-
+  // boost::process::child child_process(exe_path, io, async_bar(), ec);
 
   if (ec) {
-    std::cout << "Error " << ec.message() <<std::endl;
+    std::cout << "Error " << ec.message() << std::endl;
     return std::nullopt;
   } else {
     return std::move(Process(child_process));

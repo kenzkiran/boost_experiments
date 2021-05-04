@@ -115,7 +115,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;BOOST_ALL_DYN_LINK;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING;BOOST_ALL_DYN_LINK;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>C:\Users\rramachandra\development\maglev_latest\teams-client-native-shell\vcpkg_installed\x64-windows\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -123,8 +123,11 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>C:\Users\rramachandra\development\maglev_latest2\teams-client-native-shell\vcpkg_installed\x64-windows\lib\boost_filesystem-vc140-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>C:\Users\rramachandra\development\maglev_latest\teams-client-native-shell\vcpkg_installed\x64-windows\lib\boost_filesystem-vc140-mt.lib;C:\Users\rramachandra\development\maglev_latest\teams-client-native-shell\vcpkg_installed\x64-windows\lib\boost_program_options-vc140-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <CustomBuildStep>
+      <Command>--test=async_pipe</Command>
+    </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -143,11 +146,20 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="named_pipe_client.cpp" />
+    <ClCompile Include="named_pipe_server.cpp" />
     <ClCompile Include="process.cpp" />
     <ClCompile Include="TestBoost.cpp" />
+    <ClCompile Include="test_async_pipe.cpp" />
+    <ClCompile Include="test_process.cpp" />
+    <ClCompile Include="utilities.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="named_pipe.h" />
+    <ClInclude Include="pch.h" />
     <ClInclude Include="process.h" />
+    <ClInclude Include="test_list.h" />
+    <ClInclude Include="utilities.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
