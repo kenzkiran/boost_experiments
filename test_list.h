@@ -8,3 +8,4 @@ namespace po = boost::program_options;
 extern void TestProcess();
 extern void TestAsyncPipe(const po::variables_map& vm);
 extern void TestNamedPipe(const po::variables_map& vm);
+extern int StartCompletionRoutineServer();

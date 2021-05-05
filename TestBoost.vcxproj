@@ -147,6 +147,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="named_pipe_client.cpp" />
+    <ClCompile Include="named_pipe_completion_server.cpp" />
     <ClCompile Include="named_pipe_server.cpp" />
     <ClCompile Include="process.cpp" />
     <ClCompile Include="TestBoost.cpp" />

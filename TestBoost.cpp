@@ -54,6 +54,11 @@ int main(int argc, char** argv) {
       return 0;
     }
   
+    if (test == "completion_server") {
+      StartCompletionRoutineServer();
+      return 0;
+    }
+
     std::cout << "No test specified";
     return 0;
   }

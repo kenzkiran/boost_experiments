@@ -3,6 +3,8 @@
 #include <conio.h>
 #include <tchar.h>
 #include <iostream>
+#include <thread>
+#include <chrono>
 
 namespace win_named_pipe {
 #define BUFSIZE 512
@@ -16,7 +18,7 @@ int StartNamedPipeClient()
    DWORD  cbRead, cbToWrite, cbWritten, dwMode; 
    LPCWSTR lpszPipename = L"\\\\.\\pipe\\mynamedpipe";
 
-  std::cout << "Ravi Starting Server "<<std::endl;
+  std::cout << "Ravi Starting Client "<<std::endl;
   //  if( argc > 1 )
   //     lpvMessage = argv[1];
  
@@ -71,7 +73,7 @@ int StartNamedPipeClient()
    }
  
 // Send a message to the pipe server. 
- 
+ for (int i = 0; i < 5; ++i) {
    cbToWrite = (lstrlen(lpvMessage)+1)*sizeof(TCHAR);
    _tprintf( TEXT("Sending %d byte message: \"%s\"\n"), cbToWrite, lpvMessage); 
 
@@ -87,7 +89,8 @@ int StartNamedPipeClient()
      std::cout <<"Error : WriteFile to pipe failed. GLE"<< GetLastError() << std::endl; 
       return -1;
    }
-
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+  }
    printf("\nMessage sent to server, receiving reply as follows:\n");
  
    do 
@@ -101,11 +104,14 @@ int StartNamedPipeClient()
          &cbRead,  // number of bytes read 
          NULL);    // not overlapped 
  
-      if ( ! fSuccess && GetLastError() != ERROR_MORE_DATA )
-         break; 
+      if (!fSuccess && GetLastError() != ERROR_MORE_DATA) {
+        std::cout << "ReadFile errored out : GLE " << GetLastError();
+        break;
+      }
  
+
       _tprintf( TEXT("\"%s\"\n"), chBuf ); 
-   } while ( ! fSuccess);  // repeat loop if ERROR_MORE_DATA 
+   } while (1);  // repeat loop if ERROR_MORE_DATA 
 
    if ( ! fSuccess)
    {
