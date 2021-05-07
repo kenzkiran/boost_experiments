@@ -45,7 +45,7 @@ std::wstring PipeName(const std::string& name) {
     return NamedPipeWin();
   }
 
-  std::cout << "Ravi CreateServer Handle " << pipe_handle;
+  std::cout << "Ravi CreateServer Handle " << pipe_handle <<std::endl;
   // TODO: Ensure if 'DisconnectNamedPipe' is needed or not.
   // From the documentation if we don't intend to re-use the same server
   // pipe to connect to a different client, we don't need it.
@@ -67,13 +67,15 @@ std::wstring PipeName(const std::string& name) {
                  0,                             // no sharing
                  NULL,                          // default security attributes
                  OPEN_EXISTING,                 // opens existing pipe
-                 0,                             // default attributes
+                 FILE_FLAG_OVERLAPPED,                             // default attributes
                  NULL);                         // no template file
 
   if (pipe_handle == INVALID_HANDLE_VALUE) {
     std::cout << "Failed to Create Server Pipe : GLE " << GetLastError();
     return NamedPipeWin();
   }
+
+  std::cout << "Ravi CreateClient Handle " << pipe_handle << std::endl;
   return NamedPipeWin(wil::unique_handle(pipe_handle));
 }
 

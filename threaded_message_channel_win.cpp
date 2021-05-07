@@ -4,12 +4,11 @@
 
 constexpr int BUFSIZE = 512;
 std::vector<char> read_buf2(BUFSIZE);
-OVERLAPPED oConnect2;
 
 void DoReadCompleteRoutine(DWORD error_code,
                           DWORD bytes_transferred,
                           LPOVERLAPPED ctx) {
-  std::cout << "Received Completion Routine " << std::this_thread::get_id()<<std::endl;
+  // std::cout << "Received Completion Routine " << std::this_thread::get_id()<<std::endl;
   PipeContextPtr context = (PipeContextPtr)ctx;
   context->owner->ReadComplete(error_code, bytes_transferred);
 }
@@ -85,6 +84,30 @@ bool ThreadedMessageChannelWin::ConnectToClient() {
   return true;
 }
 
+
+bool ThreadedMessageChannelWin::SendMessageOver(const std::string& message) noexcept {
+  if (!std::holds_alternative<ChannelConnected>(state_)) {
+    std::cout << " Not in the right state, failed to send message" << std::endl;
+    return false;
+  }
+
+  std::cout <<"Ravi Sending Message Over: " << message.size() <<std::endl;
+  DWORD bytes_written{0};
+  BOOL success = WriteFile(named_pipe_.handle(),                  // pipe handle 
+      message.data(),             // message 
+      message.size(),              // message length 
+      &bytes_written,             // bytes written 
+      NULL);    
+
+  if (!success) {
+    std::cout <<"Error : WriteFile to pipe failed. GLE"<< GetLastError() << std::endl; 
+    return false;
+  }
+
+  std::cout <<"Input message size vs bytes_written " << message.size() << " vs " <<bytes_written <<std::endl;
+  return true;
+}
+
 void ThreadedMessageChannelWin::DoWait() {
   bool quit{false};
   while (!quit) {
@@ -136,14 +159,15 @@ void ThreadedMessageChannelWin::DoWait() {
 
 void ThreadedMessageChannelWin::ReadComplete(DWORD error_code,
                                              DWORD bytes_transferred) noexcept {
+
+  static int received_count = -1;
   // Check if bytes transferred is <= what we are expecting.
   if (error_code) {
-    std::cout << "Ravi ReadComplete Errored out " << error_code;
+    std::cout << "Ravi ReadComplete Errored out " << error_code << std::endl;
     state_ = ChannelError{std::string("ReadComplete Error "), error_code};
     DisconnectAndClose();
   } else {
-    std::cout << "Ravi ReadComplete Routine, read " << bytes_transferred
-              << named_pipe_.handle() << std::endl;
+    //std::cout << "Ravi ReadComplete Routine, read: " << received_count++ <<bytes_transferred << std::endl;
     BOOL success =
         ReadFileEx(named_pipe_.handle(), read_buf2.data(), BUFSIZE,
                    (LPOVERLAPPED)context_.get(), DoReadCompleteRoutine);
@@ -153,15 +177,28 @@ void ThreadedMessageChannelWin::ReadComplete(DWORD error_code,
       DisconnectAndClose();
     } else {
       std::string msg(read_buf2.data(), bytes_transferred);
-      std::cout <<"Received Message : " << msg <<std::endl;
+      received_count++;
+      std::cout << "Ravi Message  Routine, count: " << received_count << " : " << bytes_transferred << std::endl;
+      // std::cout <<"Received Message : " << msg <<std::endl;
     }
   }
 }
 
 void ThreadedMessageChannelWin::ConnectInternal() {
-  if (!ConnectToClient()) {
-    std::cout << "Error in connecting to client" << std::endl;
+
+  auto is_server = named_pipe_.IsServer();
+  if (!is_server) {
+    std::cout << " Could not fingure out if we were a server " <<std::endl;
     return;
+  }
+  if (is_server.value()) {
+    if (!ConnectToClient()) {
+      std::cout << "Error in connecting to client" << std::endl;
+      return;
+    }
+  } else {
+    state_ = ChannelConnected();
+    ReadComplete(0, 0);
   }
   DoWait();
 }

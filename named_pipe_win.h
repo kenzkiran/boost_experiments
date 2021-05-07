@@ -31,9 +31,3 @@ struct NamedPipeWin {
   NamedPipeWin& operator=(const NamedPipeWin&) = delete; //disable assign
   wil::unique_handle pipe_;
 };
-
-
-
-
-
-

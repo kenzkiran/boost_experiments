@@ -40,8 +40,11 @@ public:
   ThreadedMessageChannelWin(NamedPipeWin named_pipe);
   ~ThreadedMessageChannelWin();
   void ReadComplete(DWORD error_code, DWORD bytes_transferred) noexcept;
-  void SendMessageOver(const std::string& message) noexcept {}
+  bool SendMessageOver(const std::string& message) noexcept;
   void ConnectOnIOThread();
+  bool IsInError() const {
+    return std::holds_alternative<ChannelError>(state_);
+  }
 private:
   bool ConnectToClient();
   void ConnectInternal();
