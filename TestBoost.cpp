@@ -5,6 +5,8 @@
 
 #include "pch.h"
 #include "test_list.h"
+#include "threaded_message_channel_win.h"
+#include "named_pipe_win.h"
 
 // Notes: Program options need a lib
 // Reference https://www.boost.org/doc/libs/1_76_0/doc/html/program_options/
@@ -56,6 +58,15 @@ int main(int argc, char** argv) {
   
     if (test == "completion_server") {
       StartCompletionRoutineServer();
+      return 0;
+    }
+
+    if (test == "tmcw") {
+      std::string name{"some_pipe"};
+      auto pipe = NamedPipeWin::CreateServerPipe(name);
+      auto tmc = std::make_shared<ThreadedMessageChannelWin>(std::move(pipe));
+      tmc->ConnectOnIOThread();
+      std::this_thread::sleep_for(std::chrono::seconds(10));
       return 0;
     }
 

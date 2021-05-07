@@ -125,7 +125,7 @@ bool ConnectToNewClient() {
             break;
           } else {
             std::cout << " Connected to a client successfully " << std::endl;
-            connect_status == ConnectionStatus::kConnected;
+            connect_status = ConnectionStatus::kConnected;
             ReadCompleteRoutine(0, 0, &oConnect);
             SetEvent(hPipeEvents);
           }
@@ -148,6 +148,7 @@ bool ConnectToNewClient() {
         break;
     }
   }
+  return true;
 }
 
 BOOL CreateAndConnectInstance() {

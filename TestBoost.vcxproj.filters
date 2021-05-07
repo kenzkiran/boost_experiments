@@ -39,6 +39,12 @@
     <ClCompile Include="named_pipe_completion_server.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="threaded_message_channel_win.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="named_pipe_win.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="process.h">
@@ -56,5 +62,14 @@
     <ClInclude Include="utilities.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="threaded_message_channel_win.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="named_pipe_win.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
 </Project>
