@@ -17,6 +17,9 @@ void DoReadCompleteRoutine(DWORD error_code,
 
 ThreadedMessageChannelWin::ThreadedMessageChannelWin(NamedPipeWin pipe)
     : named_pipe_(std::move(pipe)) {
+  if (!named_pipe_.IsValid()) {
+    throw std::invalid_argument("Invalid Named Pipe Passed");
+  }
   // As per documentation here
   // https://docs.microsoft.com/en-us/windows/win32/api/namedpipeapi/nf-namedpipeapi-connectnamedpipe
   // The event should be a manual reset event.

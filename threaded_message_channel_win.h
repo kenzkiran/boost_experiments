@@ -33,11 +33,13 @@ class ThreadedMessageChannelWin {
     virtual void OnConnectStatus(ChannelConnectStatus status) = 0;
   };
 
-  ThreadedMessageChannelWin(NamedPipeWin named_pipe);
+  explicit ThreadedMessageChannelWin(NamedPipeWin named_pipe);
   ~ThreadedMessageChannelWin();
   void ReadComplete(DWORD error_code, DWORD bytes_transferred) noexcept;
   bool SendMessageOver(const std::string& message) noexcept;
   bool ConnectOnIOThread(Delegate* delegate);
+  // TODO: This is the only one that reads error on main thread
+  // All error condition updates happen on IO thread.
   bool IsInError() const;
 
  private:
