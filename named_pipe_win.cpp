@@ -1,11 +1,11 @@
 #include "named_pipe_win.h"
-#include "utilities.h"
 
 #include <iostream>
 
+#include "utilities.h"
+
 constexpr LPCWSTR kPipeNamePrefix = L"\\\\.\\pipe\\LOCAL\\maglev.";
 constexpr DWORD kDefaultTimeout = 5000;  // in ms
-constexpr LPCWSTR kDefaultTestPipeName = L"\\\\.\\pipe\\mynamedpipe";
 
 namespace {
 std::wstring PipeName(const std::string& name) {
@@ -31,7 +31,7 @@ std::wstring PipeName(const std::string& name) {
       PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE |
       PIPE_WAIT;  // message-type pipe, message read mode, blocking wait
   HANDLE pipe_handle = ::CreateNamedPipeW(
-      kDefaultTestPipeName,  // pipe_name.c_str(),      // pipe name
+      pipe_name.c_str(),      // pipe name
       open_mode, pipe_mode,
       1,                // only one instance
       buf_size,         // out buf
@@ -57,7 +57,7 @@ std::wstring PipeName(const std::string& name) {
   wil::unique_handle pipe_handle;
   while (1) {
     HANDLE handle =
-        CreateFile(kDefaultTestPipeName,  // pipe_name.c_str(),   // pipe name
+        CreateFile(pipe_name.c_str(),           // pipe name
                    GENERIC_READ | GENERIC_WRITE,  // read and write
                    0,                             // no sharing
                    NULL,                          // default security attributes
@@ -75,7 +75,7 @@ std::wstring PipeName(const std::string& name) {
       return NamedPipeWin();
     }
 
-    if (!WaitNamedPipe(kDefaultTestPipeName, 5000)) {  // 5 seconds
+    if (!WaitNamedPipe(pipe_name.c_str(), 5000)) {  // 5 seconds
       std::cout << " Timed out waiting for pipe " << std::endl;
       return NamedPipeWin();
     }

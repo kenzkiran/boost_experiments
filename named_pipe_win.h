@@ -1,7 +1,6 @@
 #pragma once
 
 #include "pch.h"
-
 #include <wil/cppwinrt.h>
 #include <wil/resource.h>
 #include <winrt/base.h>

@@ -54,12 +54,12 @@ std::string ConnectStatusToString(const ChannelConnectStatus& status) {
 int PipeTests(int argc, char** argv) {
   std::cout << argc << std::endl;
   po::options_description desc("Allowed options");
-  desc.add_options()("help", "produce help message")("client", "client type")(
-      "num_messages", po::value<int>()->default_value(1), "num_messages")(
-      "message_size", po::value<unsigned>()->default_value(1024),
-      "message_size to be sent")(
-      "sleep_after_tests", po::value<int>()->default_value(0),
-      "sleep after tests")("dont_exit", "does not exit");
+  desc.add_options()("help", "produce help message")("client", "client type")
+    ("num_messages", po::value<int>()->default_value(1), "num_messages")
+    ("message_size", po::value<unsigned>()->default_value(1024),"message_size to be sent")
+    ("sleep_after_tests", po::value<int>()->default_value(0),"sleep after tests")
+    ("pipe_name", po::value<std::string>()->default_value(std::string{ "mynamedpipe" }), "message pipe name")
+    ("dont_exit", "does not exit");
 
   // Variable Map is boosts extension of std::map
   // Variable Value is boost::any ->
@@ -95,8 +95,9 @@ int PipeTests(int argc, char** argv) {
   };
 
   StubDelegate stub_delegate;
-  NamedPipeWin pipe = is_client ? NamedPipeWin::CreateClientPipe("some_name")
-                                : NamedPipeWin::CreateServerPipe("some_name");
+  auto pipe_name = vm["pipe_name"].as<std::string>();
+  NamedPipeWin pipe = is_client ? NamedPipeWin::CreateClientPipe(pipe_name)
+                                : NamedPipeWin::CreateServerPipe(pipe_name);
   if (!pipe.IsValid()) {
     std::cout <<"Pipe creation failed "<<std::endl;
     return 0;
