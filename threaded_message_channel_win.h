@@ -10,6 +10,7 @@
 #include <string>
 #include <thread>
 #include <variant>
+#include <atomic>
 #include "utilities.h"
 
 #include "named_pipe_win.h"
@@ -84,4 +85,5 @@ class ThreadedMessageChannelWin {
   std::unique_ptr<PipeContext> context_;
   std::vector<char> read_buf_;
   std::string message_;
+  std::atomic_bool quit_io_thread_{false};
 };

@@ -37,6 +37,8 @@ ThreadedMessageChannelWin::~ThreadedMessageChannelWin() {
   // This should cause the IO Thread loop to break
   // due pipe broken error
   DisconnectAndClose();
+  quit_io_thread_.store(true);
+  io_event_.SetEvent();
   if (io_thread_.joinable()) {
     io_thread_.join();
   }
@@ -62,7 +64,7 @@ bool ThreadedMessageChannelWin::ConnectToClient() {
       gle == ERROR_IO_PENDING || gle == ERROR_PIPE_CONNECTED;
 
   if (connect_result || !error_is_pending_or_connected) {
-    std::cout << "Error in ConnectNamedPipe : GLE " << gle;
+    std::cout << "Error in ConnectNamedPipe : GLE " << gle <<std::endl;
     auto error = StateError{std::string("ConnectNamedPipe failed"), gle};
     state_ = error;
     NotifyError(error.ToChannelError());
@@ -71,9 +73,12 @@ bool ThreadedMessageChannelWin::ConnectToClient() {
 
   if (gle == ERROR_IO_PENDING) {
     state_ = StateConnectPending();
+    std::cout << "Named Pipe Connect Pending" << std::endl;
   } else {
+    std::cout << "Named Pipe Connected" <<std::endl;
     state_ = StateConnected();
-    io_event_.SetEvent();
+    // io_event_.SetEvent();
+    ReadComplete(0, 0);
   }
   return true;
 }
@@ -106,14 +111,22 @@ bool ThreadedMessageChannelWin::SendMessageOver(
 void ThreadedMessageChannelWin::DoWait() {
   bool quit{false};
   while (!quit) {
+    std::cout << "Ravi Inside while loop" << std::endl;
     DWORD wait = WaitForSingleObjectEx(io_event_.get(), INFINITE, TRUE);
     switch (wait) {
       case WAIT_OBJECT_0: {
+        if (quit_io_thread_.load()) {
+          quit = true;
+          break;
+        }
         // case 1: We were waiting for the connection.
         if (std::holds_alternative<StateConnectPending>(state_)) {
           if (!AcceptConnection()) {
             quit = true;
           }
+        }
+        else {
+          ReadComplete(0, 0);
         }
         break;
       }  // case WAIT_OBJECT_0
@@ -164,6 +177,7 @@ bool ThreadedMessageChannelWin::AcceptConnection() {
   }
   std::cout << "Connection Established Successfully" << std::endl;
   state_ = StateConnected();
+  io_event_.ResetEvent();
   // if we are here connection was successful, kick off Read
   ReadComplete(0, 0);
   return true;
@@ -203,6 +217,7 @@ void ThreadedMessageChannelWin::ConnectInternal() {
     }
   } else {
     state_ = StateConnected();
+    io_event_.ResetEvent();
     ReadComplete(0, 0);
   }
   DoWait();

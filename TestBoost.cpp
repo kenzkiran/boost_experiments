@@ -104,14 +104,16 @@ int PipeTests(int argc, char** argv) {
   }
   auto tmc = std::shared_ptr<ThreadedMessageChannelWin>(
       new ThreadedMessageChannelWin(std::move(pipe)));
+
+  // std::this_thread::sleep_for(std::chrono::seconds(5));
   tmc->ConnectOnIOThread(&stub_delegate);
 
   auto num_messages = vm["num_messages"].as<int>();
 
   unsigned int sleep_time = is_client ? 5 : 10;
-  std::cout << "Waiting for connections  " << std::endl;
+  std::cout << "Waiting for connections ! " << std::endl;
   std::this_thread::sleep_for(std::chrono::seconds(sleep_time));
-  std::cout << "Done waiting connections " << std::endl;
+  std::cout << "Done waiting connections !" << std::endl;
 
   std::cout << entity << ": Sending " << num_messages << std::endl;
   unsigned message_size = vm["message_size"].as<unsigned>();
@@ -129,10 +131,11 @@ int PipeTests(int argc, char** argv) {
     std::cout << "TMC is in Error, quitting " << std::endl;
     return 0;
   }
-  while (1) {
+  /*while (1) {
     std::cout << "sleeping..." << std::endl;
     std::this_thread::sleep_for(std::chrono::seconds(100));
-  }
+  }*/
+  std::this_thread::sleep_for(std::chrono::seconds(10));
 }
 
 int GenericTest(int argc, char** argv) {
