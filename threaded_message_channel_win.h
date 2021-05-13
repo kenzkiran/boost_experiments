@@ -5,12 +5,12 @@
 #include <wil/cppwinrt.h>
 #include <wil/resource.h>
 #include <winrt/base.h>
+#include <atomic>
 #include <iostream>
 #include <memory>
 #include <string>
 #include <thread>
 #include <variant>
-#include <atomic>
 #include "utilities.h"
 
 #include "named_pipe_win.h"
@@ -78,9 +78,8 @@ class ThreadedMessageChannelWin {
   std::thread io_thread_;
   NamedPipeWin named_pipe_;
   Delegate* delegate_ = nullptr;
-  // https://github.com/microsoft/wil/wiki/Event-handles
-  wil::unique_event io_event_;
-  OVERLAPPED io_overlapped_;
+  wil::unique_event io_event_{};
+  OVERLAPPED io_overlapped_{};
   ChannelState state_;
   std::unique_ptr<PipeContext> context_;
   std::vector<char> read_buf_;

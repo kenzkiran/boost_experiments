@@ -2,10 +2,10 @@
 
 constexpr int kReadBufSize = 4 * 1024;  // 4K
 
-struct PipeContext {
-  OVERLAPPED overlapped{};
+struct PipeContext : OVERLAPPED {
   ThreadedMessageChannelWin* owner{};
 };
+
 using PipeContextPtr = PipeContext*;
 
 void DoReadCompleteRoutine(DWORD error_code,
@@ -25,7 +25,7 @@ ThreadedMessageChannelWin::ThreadedMessageChannelWin(NamedPipeWin pipe)
   // The event should be a manual reset event.
   io_event_.create(wil::EventOptions::ManualReset |
                    wil::EventOptions::Signaled);
-  // Assign this to overlapped.
+
   io_overlapped_.hEvent = io_event_.get();
   context_ = std::make_unique<PipeContext>();
   context_->owner = this;
@@ -58,13 +58,12 @@ bool ThreadedMessageChannelWin::ConnectToClient() {
         "Connection can only be established from Init State"};
   }
 
+  std::cout << "Now connecting to client " << std::endl;
   BOOL connect_result = ConnectNamedPipe(named_pipe_.handle(), &io_overlapped_);
   auto gle = GetLastError();
-  bool error_is_pending_or_connected =
-      gle == ERROR_IO_PENDING || gle == ERROR_PIPE_CONNECTED;
 
-  if (connect_result || !error_is_pending_or_connected) {
-    std::cout << "Error in ConnectNamedPipe : GLE " << gle <<std::endl;
+  if (connect_result) {
+    std::cout << "Error in ConnectNamedPipe : GLE " << gle << std::endl;
     auto error = StateError{std::string("ConnectNamedPipe failed"), gle};
     state_ = error;
     NotifyError(error.ToChannelError());
@@ -73,12 +72,17 @@ bool ThreadedMessageChannelWin::ConnectToClient() {
 
   if (gle == ERROR_IO_PENDING) {
     state_ = StateConnectPending();
+    NotifyConnectStatus(ChannelConnectStatus::kConnectPending);
     std::cout << "Named Pipe Connect Pending" << std::endl;
-  } else {
-    std::cout << "Named Pipe Connected" <<std::endl;
+  } else if (gle == ERROR_PIPE_CONNECTED) {
+    std::cout << "Named Pipe Connected" << std::endl;
     state_ = StateConnected();
-    // io_event_.SetEvent();
+    NotifyConnectStatus(ChannelConnectStatus::kConnected);
     ReadComplete(0, 0);
+  } else {
+    auto error = StateError{std::string("ConnectNamedPipe failed"), gle};
+    NotifyError(error.ToChannelError());
+    return false;
   }
   return true;
 }
@@ -112,7 +116,7 @@ void ThreadedMessageChannelWin::DoWait() {
   bool quit{false};
   while (!quit) {
     std::cout << "Ravi Inside while loop" << std::endl;
-    DWORD wait = WaitForSingleObjectEx(io_event_.get(), INFINITE, TRUE);
+    DWORD wait = ::WaitForSingleObjectEx(io_event_.get(), INFINITE, TRUE);
     switch (wait) {
       case WAIT_OBJECT_0: {
         if (quit_io_thread_.load()) {
@@ -124,9 +128,6 @@ void ThreadedMessageChannelWin::DoWait() {
           if (!AcceptConnection()) {
             quit = true;
           }
-        }
-        else {
-          ReadComplete(0, 0);
         }
         break;
       }  // case WAIT_OBJECT_0
@@ -147,7 +148,8 @@ void ThreadedMessageChannelWin::DoWait() {
 void ThreadedMessageChannelWin::HandleIOCompletion() {
   // If IO failed, we would have set the error.
   if (auto ptr = std::get_if<StateError>(&state_)) {
-    if (ptr->error_code == ERROR_BROKEN_PIPE) {
+    if (ptr->error_code == ERROR_BROKEN_PIPE ||
+        ptr->error_code == ERROR_PIPE_NOT_CONNECTED) {
       NotifyConnectStatus(ChannelConnectStatus::kDisconnected);
     } else {
       NotifyError(ptr->ToChannelError());
@@ -163,9 +165,10 @@ bool ThreadedMessageChannelWin::AcceptConnection() {
                L"Invalid State Operation: Accept connection should only happen "
                L"in StateConnectPending");
 
+  std::cout << "Ravi inside Accept Connection" << std::endl;
   DWORD bytes_transfered{0};
-  auto success = GetOverlappedResult(named_pipe_.handle(), &io_overlapped_,
-                                     &bytes_transfered, FALSE);
+  auto success = ::GetOverlappedResult(named_pipe_.handle(), &io_overlapped_,
+                                       &bytes_transfered, FALSE);
   if (!success) {
     std::cout << " Failed to GetOverlappedResult " << GetLastError()
               << std::endl;
@@ -175,7 +178,9 @@ bool ThreadedMessageChannelWin::AcceptConnection() {
     NotifyError(error.ToChannelError());
     return false;
   }
-  std::cout << "Connection Established Successfully" << std::endl;
+
+  std::cout << "Connection Established Successfully, kicking off Read "
+            << std::endl;
   state_ = StateConnected();
   io_event_.ResetEvent();
   // if we are here connection was successful, kick off Read
@@ -191,15 +196,17 @@ void ThreadedMessageChannelWin::ReadComplete(DWORD error_code,
     state_ = StateError{std::string("ReadComplete Error"), error_code};
     DisconnectAndClose();
   } else {
+    if (bytes_transferred > 0) {
+      message_.append(read_buf_.data(), bytes_transferred);
+      read_buf_.clear();
+    }
+
     BOOL success =
         ReadFileEx(named_pipe_.handle(), read_buf_.data(), kReadBufSize,
                    (LPOVERLAPPED)context_.get(), DoReadCompleteRoutine);
     if (!success) {
       state_ = StateError{std::string("ReadFileEx Error "), GetLastError()};
       DisconnectAndClose();
-    } else {
-      message_.append(read_buf_.data(), bytes_transferred);
-      read_buf_.clear();
     }
   }
 }

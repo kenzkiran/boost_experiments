@@ -54,12 +54,17 @@ std::string ConnectStatusToString(const ChannelConnectStatus& status) {
 int PipeTests(int argc, char** argv) {
   std::cout << argc << std::endl;
   po::options_description desc("Allowed options");
-  desc.add_options()("help", "produce help message")("client", "client type")
-    ("num_messages", po::value<int>()->default_value(1), "num_messages")
-    ("message_size", po::value<unsigned>()->default_value(1024),"message_size to be sent")
-    ("sleep_after_tests", po::value<int>()->default_value(0),"sleep after tests")
-    ("pipe_name", po::value<std::string>()->default_value(std::string{ "mynamedpipe" }), "message pipe name")
-    ("dont_exit", "does not exit");
+  desc.add_options()("help", "produce help message")("client", "client type")(
+      "show_message", "shows incoming message")(
+      "reply", "replies to original message with reply:")(
+      "num_messages", po::value<int>()->default_value(0), "num_messages")(
+      "message_size", po::value<unsigned>()->default_value(1024),
+      "message_size to be sent")("sleep_after_tests",
+                                 po::value<int>()->default_value(0),
+                                 "sleep after tests")(
+      "pipe_name",
+      po::value<std::string>()->default_value(std::string{"mynamedpipe"}),
+      "message pipe name");
 
   // Variable Map is boosts extension of std::map
   // Variable Value is boost::any ->
@@ -82,24 +87,36 @@ int PipeTests(int argc, char** argv) {
 
   struct StubDelegate : public ThreadedMessageChannelWin::Delegate {
     void OnMessage(std::string message) override {
-      std::cout << "Delegate Received Message : " << message.size()
-                << std::endl;
+      static int received_count = 0;
+      received_count++;
+      if (show_message) {
+        std::cout << "Received Message :" << received_count
+                  << ": Size: " << message.size() << ":" << message
+                  << std::endl;
+      } else {
+        std::cout << "Received Message : " << received_count
+                  << " : Size: " << message.size() << std::endl;
+      }
     }
     void OnError(const ChannelError& error) override {
       std::cout << "Delegate Received Error " << error.message;
     }
     void OnConnectStatus(ChannelConnectStatus status) {
       std::cout << "Delegate Received Connect Status "
-                << ConnectStatusToString(status);
+                << ConnectStatusToString(status) << std::endl;
     }
+    bool show_message = false;
+    bool inline_reply = false;
   };
 
   StubDelegate stub_delegate;
+  stub_delegate.show_message = vm.count("show_message") != 0;
+  stub_delegate.inline_reply = vm.count("reply") != 0;
   auto pipe_name = vm["pipe_name"].as<std::string>();
   NamedPipeWin pipe = is_client ? NamedPipeWin::CreateClientPipe(pipe_name)
                                 : NamedPipeWin::CreateServerPipe(pipe_name);
   if (!pipe.IsValid()) {
-    std::cout <<"Pipe creation failed "<<std::endl;
+    std::cout << "Pipe creation failed " << std::endl;
     return 0;
   }
   auto tmc = std::shared_ptr<ThreadedMessageChannelWin>(
@@ -110,7 +127,7 @@ int PipeTests(int argc, char** argv) {
 
   auto num_messages = vm["num_messages"].as<int>();
 
-  unsigned int sleep_time = is_client ? 5 : 10;
+  unsigned int sleep_time = is_client ? 5 : 6;
   std::cout << "Waiting for connections ! " << std::endl;
   std::this_thread::sleep_for(std::chrono::seconds(sleep_time));
   std::cout << "Done waiting connections !" << std::endl;
@@ -131,11 +148,20 @@ int PipeTests(int argc, char** argv) {
     std::cout << "TMC is in Error, quitting " << std::endl;
     return 0;
   }
-  /*while (1) {
-    std::cout << "sleeping..." << std::endl;
-    std::this_thread::sleep_for(std::chrono::seconds(100));
-  }*/
-  std::this_thread::sleep_for(std::chrono::seconds(10));
+
+  int sleep_after_test = vm["sleep_after_tests"].as<int>();
+  std::cout << "sleep_after_test: " << sleep_after_test;
+  bool sleep_for_ever = false;
+  if (sleep_after_test < 0) {
+    std::cout << "Sleeping for ever" << std::endl;
+    sleep_for_ever = true;
+  } else {
+    std::cout << "Sleeping for " << sleep_after_test << " seconds" << std::endl;
+  }
+
+  do {
+    std::this_thread::sleep_for(std::chrono::seconds(sleep_after_test));
+  } while (sleep_for_ever);
 }
 
 int GenericTest(int argc, char** argv) {
